@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Transcription Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #86efac 0%, #4ade80 50%, #22c55e 100%);
+            padding: 10px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            height: calc(100vh - 20px);
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: fadeInUp 0.6s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .text-box {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .text-box-title {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .text-box-content {
+            color: white;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .text-box-placeholder {
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+            font-size: 1rem;
+        }
+
+        .mic-button {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+            z-index: 1000;
+        }
+
+        .mic-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 40px rgba(34, 197, 94, 0.5);
+        }
+
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+
+        .mic-button.recording {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .video-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .asl-video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .asl-video.active {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1);
+            }
+        }
+
+        .mic-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .mic-icon-small {
+            width: 28px;
+            height: 28px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .text-box {
+                padding: 20px;
+            }
+
+            .mic-button {
+                bottom: 20px;
+                left: 20px;
+                width: 50px;
+                height: 50px;
+            }
+
+            .mic-icon-small {
+                width: 24px;
+                height: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="text-box">
+                <div class="text-box-title">
+                    <span>✨</span>
+                    <span>Transcription</span>
+                </div>
+                <div class="text-box-content" id="transcription">
+                    <div class="text-box-placeholder">Your transcription will appear here...</div>
+                </div>
+            </div>
+
+            <div class="text-box">
+                <div class="text-box-title">
+                    <span>📝</span>
+                    <span>ASL Video</span>
+                </div>
+                <div class="video-container" id="videoContainer">
+                    <video class="asl-video" id="aslVideo" autoplay muted playsinline></video>
+                    <div class="text-box-placeholder" id="videoPlaceholder">ASL videos will play here during recording...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="mic-button" id="micButton">
+        <svg class="mic-icon-small" id="micIcon" viewBox="0 0 24 24">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+    </button>
+
+    <script>
+        var webhookUrl = 'https://n8n.reedox.xyz/webhook/6110402f-8f19-492f-9b8d-de74a10ff3fe';
+        
+        var isRecording = false;
+        var mediaRecorder = null;
+        var audioStream = null;
+        var transcriptionInterval = null;
+        var accumulatedTranscription = '';
+        var videoPlaybackTimeout = null;
+        var videoPlaybackInterval = null;
+        var currentVideoIndex = 0;
+
+        // List of ASL video files
+        var aslVideos = [
+            './data/temp/90867afa-b029-439d-b0b4-11416300a41d/sign.mp4',
+        ];
+
+        var micButton = document.getElementById('micButton');
+        var micIcon = document.getElementById('micIcon');
+        var transcription = document.getElementById('transcription');
+        var aslVideo = document.getElementById('aslVideo');
+        var videoPlaceholder = document.getElementById('videoPlaceholder');
+
+        micButton.addEventListener('click', function() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    audioStream = stream;
+                    isRecording = true;
+                    
+                    micButton.classList.add('recording');
+                    micIcon.innerHTML = '<line x1="18" y1="6" x2="6" y2="18" stroke="white" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="white" stroke-width="2"/>';
+                    
+                    // Clear previous transcription
+                    accumulatedTranscription = '';
+                    transcription.innerHTML = '<div class="text-box-placeholder">Listening...</div>';
+                    
+                    // Start sending audio chunks every 3 seconds for real-time transcription
+                    transcriptionInterval = setInterval(function() {
+                        sendAudioChunk(stream);
+                    }, 3000);
+                    
+                    // Send first chunk immediately
+                    sendAudioChunk(stream);
+                    
+                    // Start video playback after 3 seconds
+                    videoPlaybackTimeout = setTimeout(function() {
+                        startVideoPlayback();
+                    }, 3000);
+                })
+                .catch(function(error) {
+                    console.error('Error accessing microphone:', error);
+                    transcription.innerHTML = '<div class="text-box-placeholder">Please allow microphone access and try again.</div>';
+                });
+        }
+
+        function stopRecording() {
+            if (isRecording) {
+                isRecording = false;
+                
+                // Clear the interval
+                if (transcriptionInterval) {
+                    clearInterval(transcriptionInterval);
+                    transcriptionInterval = null;
+                }
+                
+                // Stop video playback
+                stopVideoPlayback();
+                
+                // Clear video timeout if it hasn't fired yet
+                if (videoPlaybackTimeout) {
+                    clearTimeout(videoPlaybackTimeout);
+                    videoPlaybackTimeout = null;
+                }
+                
+                // Stop the media stream
+                if (audioStream) {
+                    audioStream.getTracks().forEach(function(track) {
+                        track.stop();
+                    });
+                    audioStream = null;
+                }
+                
+                micButton.classList.remove('recording');
+                micIcon.innerHTML = '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
+            }
+        }
+
+        function getRandomVideo() {
+            var randomIndex = Math.floor(Math.random() * aslVideos.length);
+            return aslVideos[randomIndex];
+        }
+
+        function playNextVideo() {
+            if (!isRecording) return;
+            
+            var videoPath = getRandomVideo();
+            aslVideo.src = videoPath;
+            aslVideo.classList.add('active');
+            videoPlaceholder.style.display = 'none';
+            
+            aslVideo.onended = function() {
+                if (isRecording) {
+                    // Play next random video after a short delay
+                    setTimeout(function() {
+                        playNextVideo();
+                    }, 100);
+                } else {
+                    stopVideoPlayback();
+                }
+            };
+            
+            aslVideo.onerror = function() {
+                console.error('Error loading video:', videoPath);
+                // Try next video on error
+                if (isRecording) {
+                    setTimeout(function() {
+                        playNextVideo();
+                    }, 100);
+                }
+            };
+            
+            aslVideo.load();
+            aslVideo.play().catch(function(error) {
+                console.error('Error playing video:', error);
+            });
+        }
+
+        function startVideoPlayback() {
+            if (!isRecording) return;
+            playNextVideo();
+        }
+
+        function stopVideoPlayback() {
+            if (videoPlaybackInterval) {
+                clearInterval(videoPlaybackInterval);
+                videoPlaybackInterval = null;
+            }
+            
+            if (aslVideo) {
+                aslVideo.pause();
+                aslVideo.src = '';
+                aslVideo.classList.remove('active');
+                videoPlaceholder.style.display = 'block';
+            }
+        }
+
+        function sendAudioChunk(stream) {
+            if (!isRecording || !stream) return;
+            
+            // Create a new MediaRecorder for this chunk
+            var chunkRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            var chunkBlobs = [];
+            
+            chunkRecorder.ondataavailable = function(event) {
+                if (event.data.size > 0) {
+                    chunkBlobs.push(event.data);
+                }
+            };
+            
+            chunkRecorder.onstop = function() {
+                var audioBlob = new Blob(chunkBlobs, { type: 'audio/webm' });
+                sendAudioForTranscription(audioBlob);
+            };
+            
+            // Record for 2.5 seconds (slightly less than interval to avoid overlap)
+            chunkRecorder.start();
+            setTimeout(function() {
+                if (chunkRecorder.state === 'recording') {
+                    chunkRecorder.stop();
+                }
+            }, 2500);
+        }
+
+        function sendAudioForTranscription(audioBlob) {
+            var formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
+
+            fetch(webhookUrl, {
+                method: 'POST',
+                body: formData,
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(response.status + ' - ' + response.statusText);
+                }
+            })
+            .then(function(result) {
+                var transcriptionText = '';
+                if (result.transcription) {
+                    transcriptionText = result.transcription;
+                } else if (result.text) {
+                    transcriptionText = result.text;
+                } else if (result.data) {
+                    transcriptionText = result.data;
+                } else if (typeof result === 'string') {
+                    transcriptionText = result;
+                } else {
+                    transcriptionText = JSON.stringify(result, null, 2);
+                }
+                
+                // Append new transcription to accumulated text
+                if (transcriptionText && transcriptionText.trim()) {
+                    if (accumulatedTranscription) {
+                        accumulatedTranscription += ' ' + transcriptionText;
+                    } else {
+                        accumulatedTranscription = transcriptionText;
+                    }
+                    
+                    // Update the display
+                    transcription.textContent = accumulatedTranscription;
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                // Don't show error in UI during real-time recording to avoid disruption
+            });
+        }
+    </script>
+</body>
+</html>

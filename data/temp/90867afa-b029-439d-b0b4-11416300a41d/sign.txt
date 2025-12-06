@@ -1,0 +1,3 @@
+file 'D:/JWWork/speech-2-asl/speech-to-asl/data/raw/gloss2pose/signs/sign-9416.mp4'
+file 'D:/JWWork/speech-2-asl/speech-to-asl/data/raw/gloss2pose/signs/sign-6737.mp4'
+file 'D:/JWWork/speech-2-asl/speech-to-asl/data/raw/gloss2pose/signs/sign-4296.mp4'
